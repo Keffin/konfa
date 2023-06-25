@@ -19,3 +19,7 @@
 
 # Go workspace file
 go.work
+
+# Random files
+random.yaml
+code.txt

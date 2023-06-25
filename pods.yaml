@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: basicpod
+  labels:
+    app: enginex
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest # image name:image version, nginx downloads from DockerHub
+      ports:
+        - containerPort: 80 # open ports in the container
+      env: # environment variables
+        - name: USER
+          value: "username"
+      resources:
+        limits:
+          memory: 512Mi
+          cpu: "1"
+        requests:
+          memory: 256Mi
+          cpu: "0.2"
