@@ -40,10 +40,13 @@ func main() {
 
 	namespace := "kevdev"
 	cmname := "myconfig"
+	deploymentName := "firstdeployment"
 	m := client.New(namespace, *clientset)
 	m.UpdateConfigMap(true, "nestlevel2", "struct nest bump", namespace, cmname)
 	m.UpdateConfigMap(false, "file_data", "struct key prop bump", namespace, cmname)
-	
+	m.UpdateDeployment("containers.nginx.requests.memory", "100Mi", namespace, deploymentName)
+	m.UpdateDeployment("containers.nginx.limits.memory", "200Mi", namespace, deploymentName)
+
 	//deploymentName := "firstdeployment"
 	//replicas := int32(2)
 	//UpdateReplicas(deploymentName, namespace, replicas, *clientset)
