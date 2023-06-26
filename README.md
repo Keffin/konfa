@@ -10,3 +10,4 @@ Add following functionality:
 - In general updates different kubernetes related config in a simpler way than having to use kubectl and specifying.
 - Also add possibility of setting different contexts for the application.
 - `konfa set namespace <name>`, and therefor don't have to specify namespace anymore when updating certain kubernetes config.
+- Add functionality for some kind of diff viewer, where the newly added config will show up with some nice color coding to show that entry X -> Y.

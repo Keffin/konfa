@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: kevdev
+  name: regdev
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: myconfig
-  namespace: kevdev
+  name: newconfig
+  namespace: regdev
 data:
   # props like keys
   reg_data: "reg-data-test"
@@ -15,35 +15,27 @@ data:
   # File like keys
   conf.yaml: |
     file_data: "file-data-test"
-    more_data: "more-data"
-    nested_data:
-      nestlevel1: "nested level 1 data"
-    nested_data_2:
-      nest_data_2_lvl1:
-        nest_data_2_lvl2:
-          nestlevel2: "nested level 2 data"
 
   # More file like keys
   config.properties: |
     file_prop.data="file-prop-data-test"
-    prop.moredata="moredata-prop"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: firstdeployment
-  namespace: kevdev
+  name: otherdeployment
+  namespace: regdev
   labels:
-    team: development
+    team: dev
 spec:
   replicas: 3
   selector: # deployment selector
     matchLabels: # deployment selects "app:frontend" pods, monitors and traces these pods
-      app: mydeployment # if one of the pod is killed, K8s looks at the desire state (replica:3), it recreats another pods to protect number of replicas
+      app: myotherdeployment # if one of the pod is killed, K8s looks at the desire state (replica:3), it recreats another pods to protect number of replicas
   template:
     metadata:
       labels: # pod labels, if the deployment selector is same with these labels, deployment follows pods that have these labels
-        app: mydeployment # key: value
+        app: myotherdeployment # key: value
     spec:
       containers:
         - name: nginx
@@ -64,7 +56,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: myconfig
+            name: newconfig
             items:
               - key: "conf.yaml"
                 path: "conf.yaml"
