@@ -42,6 +42,10 @@ func (c *Client) UpdateConfigMap(isFileProp bool, key, val, namespace, configNam
 
 }
 
+func (c *Client) GetNamespace() string {
+	return c.namespace
+}
+
 // Deployments use the AppsV1(), while config etc uses CoreV1()
 // and for Spec content.
 // Spec content that can be updated:
@@ -129,6 +133,7 @@ func (c *Client) GetDeploymentImages(namespace, deployment string) []string {
 		images = append(images, v.Name)
 	}
 
+	log.Println(images)
 	return images
 }
 
