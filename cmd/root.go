@@ -45,7 +45,6 @@ func init() {
 	}
 
 	kubeConfigPath = filepath.Join(usrHome, ".kube", "config")
-	log.Printf("Using kubeConfigPath: %s\n", kubeConfigPath)
 
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {
@@ -101,21 +100,5 @@ var namespaceCmd = &cobra.Command{
 
 		fmt.Printf("Setting namespace to: %v \n", namespace)
 		konfaClient = client.New(namespace, *kubeClient)
-	},
-}
-
-var getImage = &cobra.Command{
-	Use:   "get",
-	Short: "Get the deployments for setup namespace",
-	Run: func(cmd *cobra.Command, args []string) {
-		data, err := ioutil.ReadFile(namespaceFile)
-		if err != nil {
-			log.Printf("Error reading namespace file: %v\n", err)
-			os.Exit(1)
-		}
-
-		namespace := string(data)
-		konfaClient = client.New(namespace, *kubeClient)
-		konfaClient.GetDeploymentImages(namespace, "firstdeployment")
 	},
 }

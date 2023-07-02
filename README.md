@@ -14,6 +14,7 @@ Add following functionality:
 - `konfa set namespace <name>`, and therefor don't have to specify namespace anymore when updating certain kubernetes config.
 - Add functionality for some kind of diff viewer, where the newly added config will show up with some nice color coding to show that entry X -> Y.
 - Add some functionality for fetching config in a simpler way than having to run kubectl commands?
+- Add tests ofc
 
 ## Usage
 
