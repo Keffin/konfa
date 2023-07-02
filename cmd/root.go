@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,10 +14,10 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "Konfa CLI",
+		Use:   "konfa CLI",
 		Short: "A CLI for incident creation.",
 		Long: `
-		Konfa is a CLI tool created to swiftly be able to edit and re-deploy changes to your kubernetes setup. 
+		konfa is a CLI tool created to swiftly be able to edit and re-deploy changes to your kubernetes setup. 
 		The idea behind this is to work as a sort of nice-to-have tool for testing out incident scenarios, where configuration breaks.
 		Educational purpose. 
 		`,
@@ -26,7 +25,12 @@ var (
 	kubeConfigPath string
 	kubeClient     *kubernetes.Clientset
 	konfaClient    *client.Client
+)
+
+// Files
+var (
 	namespaceFile  string
+	deploymentFile string
 )
 
 func Execute() {
@@ -59,46 +63,39 @@ func init() {
 		os.Exit(1)
 	}
 
-	rootCmd.AddCommand(namespaceCmd)
-	rootCmd.AddCommand(getImage)
-
-	// Store namespace file under ~/.konfa/namespace
-	namespaceFile = filepath.Join(usrHome, ".konfa", "namespace")
-	err = os.MkdirAll(filepath.Dir(namespaceFile), 0700)
+	konfaDir := filepath.Join(usrHome, ".konfa")
+	err = os.MkdirAll(konfaDir, 0700)
 	if err != nil {
-		log.Printf("Error creating directory: %v\n", err)
+		log.Printf("Error creating directory: %v \n", err)
 		os.Exit(1)
 	}
+	// Store namespace & deployment file under ~/.konfa/namespace, ~/.konfa/deployment
+	namespaceFile = filepath.Join(konfaDir, "namespace")
+	deploymentFile = filepath.Join(konfaDir, "deployment")
+
+	// Open or create the namespace file
+	nsFile, err := os.OpenFile(namespaceFile, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Printf("Error opening or creating namespace file: %v\n", err)
+		os.Exit(1)
+	}
+	defer nsFile.Close()
+
+	// Open or create the deployment file
+	deployFile, err := os.OpenFile(deploymentFile, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Printf("Error opening or creating deployment file: %v\n", err)
+		os.Exit(1)
+	}
+	defer deployFile.Close()
+
 }
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version number of Konfa.",
+	Short: "Print the version number of konfa.",
 	Run: func(cmd *cobra.Command, args []string) {
 		colorGreen := "\033[32m"
-		fmt.Println(string(colorGreen), "Konfa command line tool v0.1")
-	},
-}
-
-var namespaceCmd = &cobra.Command{
-	Use:   "namespace",
-	Short: "Set the namespace for your kubernetes client.",
-	Long: `For allowing Konfa to operate, you will have to setup a namespace on which it will run its command against.
-	Setting up no namespace, will for now not allow it to run.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			fmt.Println("Please provide a namespace.")
-			return
-		}
-		namespace := args[0]
-		err := ioutil.WriteFile(namespaceFile, []byte(namespace), 0644)
-
-		if err != nil {
-			log.Printf("Error writing namespace to file: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Setting namespace to: %v \n", namespace)
-		konfaClient = client.New(namespace, *kubeClient)
+		fmt.Println(string(colorGreen), "konfa command line tool v0.1")
 	},
 }

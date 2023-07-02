@@ -32,12 +32,12 @@ func New(namespace string, client kubernetes.Clientset) *Client {
 // input: ConfigMap
 // output: None
 // Takes a configmap, verifies whether key belongs to file or key prop, updates accordingly.
-func (c *Client) UpdateConfigMap(isFileProp bool, key, val, namespace, configName string) {
+func (c *Client) UpdateConfigMap(isFileProp bool, key, val, configName string) {
 
 	if isFileProp {
-		updateConfigMapFileProperty(key, val, namespace, configName, c.client)
+		updateConfigMapFileProperty(key, val, c.namespace, configName, c.client)
 	} else {
-		updateConfigMapKeyProperty(key, val, namespace, configName, c.client)
+		updateConfigMapKeyProperty(key, val, c.namespace, configName, c.client)
 	}
 
 }

@@ -18,10 +18,16 @@ var getImage = &cobra.Command{
 			log.Printf("Error reading namespace file: %v\n", err)
 			os.Exit(1)
 		}
+		d, err := ioutil.ReadFile(deploymentFile)
+		if err != nil {
+			log.Printf("Error reading deployment file: %v\n", err)
+			os.Exit(1)
+		}
 
 		namespace := string(data)
+		deployment := string(d)
 		konfaClient = client.New(namespace, *kubeClient)
-		konfaClient.GetDeploymentImages(namespace, "firstdeployment")
+		konfaClient.GetDeploymentImages(namespace, deployment)
 	},
 }
 
