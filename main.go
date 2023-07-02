@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Keffin/konfa/client"
 	v1 "k8s.io/api/core/v1"
@@ -39,35 +38,22 @@ func main() {
 	}
 
 	namespace := "kevdev"
-	cmname := "myconfig"
+	//cmname := "myconfig"
 	deploymentName := "firstdeployment"
 	m := client.New(namespace, *clientset)
-	m.UpdateConfigMap(true, "nestlevel2", "struct nest bump", namespace, cmname)
-	m.UpdateConfigMap(false, "file_data", "struct key prop bump", namespace, cmname)
-	m.UpdateDeployment("containers.nginx.requests.memory", "100Mi", namespace, deploymentName)
-	m.UpdateDeployment("containers.nginx.limits.memory", "200Mi", namespace, deploymentName)
-
+	//m.UpdateConfigMap(true, "nestlevel2", "struct nest bump", namespace, cmname)
+	//m.UpdateConfigMap(false, "file_data", "struct key prop bump", namespace, cmname)
+	//m.UpdateDeployment("containers.nginx.requests.memory", "100Mi", namespace, deploymentName)
+	//m.UpdateDeployment("containers.nginx.limits.memory", "200Mi", namespace, deploymentName)
+	//i := m.GetDeploymentImages(namespace, deploymentName)
+	//m.UpdateContainer("nginx", "ports.ContainerPort", "70", namespace, deploymentName)
+	m.UpdateContainerSpecs("nginx", "resources.requests", "300Mi", namespace, deploymentName)
+	//m.UpdateContainerSpecs("nginx-2", "resources.limits", "600Mi", namespace, deploymentName)
 	//deploymentName := "firstdeployment"
-	//replicas := int32(2)
+	replicas := int32(2)
 	//UpdateReplicas(deploymentName, namespace, replicas, *clientset)
+	m.UpdateReplicas(deploymentName, namespace, replicas)
 
-}
-
-func UpdateReplicas(deploymentName, namespace string, replicaNum int32, client kubernetes.Clientset) {
-	d, err := client.AppsV1().Deployments(namespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
-
-	if err != nil {
-		os.Exit(1)
-	}
-
-	d.Spec.Replicas = &replicaNum
-	ud, err := client.AppsV1().Deployments(namespace).Update(context.Background(), d, metav1.UpdateOptions{})
-
-	if err != nil {
-		log.Fatalf("Error updating deployment %v", err)
-	}
-
-	log.Printf("Deployment %s updated: replicas = %d \n", ud.Name, *ud.Spec.Replicas)
 }
 
 func ListPods(namespace string, client kubernetes.Interface) (*v1.PodList, error) {
@@ -78,22 +64,4 @@ func ListPods(namespace string, client kubernetes.Interface) (*v1.PodList, error
 		return nil, err
 	}
 	return pods, nil
-}
-
-func FetchMemory(pods *v1.PodList) {
-	for _, pod := range pods.Items {
-		for _, container := range pod.Spec.Containers {
-			memoryLimit := container.Resources.Limits.Memory()
-			memoryRequest := container.Resources.Requests.Memory()
-
-			if strings.Contains(pod.Name, "firstdeployment") {
-				log.Printf("Pod name: %v\n", pod.Name)
-				log.Printf("Container name: %v\n", container.Name)
-				log.Printf("Memory limit: %v\n", memoryLimit)
-				log.Printf("Memory request: %v\n", memoryRequest)
-				log.Println()
-			}
-		}
-
-	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -15,14 +16,14 @@ import (
 )
 
 type Client struct {
-	client kubernetes.Clientset
+	client    kubernetes.Clientset
 	namespace string
 }
 
 func New(namespace string, client kubernetes.Clientset) *Client {
 
 	return &Client{
-		client: client, 
+		client:    client,
 		namespace: namespace,
 	}
 }
@@ -42,56 +43,93 @@ func (c *Client) UpdateConfigMap(isFileProp bool, key, val, namespace, configNam
 }
 
 // Deployments use the AppsV1(), while config etc uses CoreV1()
-// For now only allow update to MetaData -> Namespace 
 // and for Spec content.
 // Spec content that can be updated:
 // Replicas
 // Resources, this will be issue since you can have multiple images with diff resources, so dupe keys.
-// VolumeMounts
-// Volumes
 // Ports
-func (c *Client) UpdateDeployment(key, val, namespace, deployment string) {
-	updateDeploymentProps(key, val, namespace, deployment, c.client)
-	
-	// If key: MetaData.NameSpace then Update MetaData.NameSpace
-	// If key: Spec.Replicas then Update Spec.Replicas.
+
+// Allow something like
+// Key: ports.ContainerPort, newContainerKey: 81
+// Key: resources.Limits.memory, newContainerKey: 100Mi
+func (c *Client) UpdateContainerSpecs(containerName, containerKey, newContainerKey, namespace, deployment string) {
+	containers := c.GetDeploymentImages(namespace, deployment)
+	d, err := c.client.AppsV1().Deployments(namespace).Get(context.Background(), deployment, metav1.GetOptions{})
+	if err != nil {
+		log.Fatalf("Failed to get deployment: %v", err)
+	}
+
+	var hasBeenUpdated bool
+
+	if contains(containers, containerName) {
+		for idx, container := range d.Spec.Template.Spec.Containers {
+			if container.Name == containerName {
+				if containerKey == "ports.ContainerPort" {
+					newPortNum, err := strconv.Atoi(newContainerKey)
+					if err != nil {
+						log.Fatalf("Error when converting container port num to int: %v", err)
+					}
+					for pdx := range container.Ports {
+						d.Spec.Template.Spec.Containers[idx].Ports[pdx].ContainerPort = int32(newPortNum)
+					}
+					hasBeenUpdated = true
+				} else if containerKey == "resources.limits" || containerKey == "resources.requests" {
+					r := &container.Resources
+					newResourceValue := resource.MustParse(newContainerKey)
+					switch containerKey {
+					case "resources.limits":
+						r.Limits[corev1.ResourceMemory] = newResourceValue
+					case "resources.requests":
+						r.Requests[corev1.ResourceMemory] = newResourceValue
+					}
+					hasBeenUpdated = true
+				}
+				break
+			}
+		}
+	}
+
+	if hasBeenUpdated {
+		updated, err := c.client.AppsV1().Deployments(namespace).Update(context.Background(), d, metav1.UpdateOptions{})
+		if err != nil {
+			log.Fatalf("Error updating deployment: %v", err)
+		}
+
+		log.Printf("Deployment updated: %s", updated.Name)
+	}
 }
 
-func updateDeploymentProps(key, newVal, ns, deployment string, client kubernetes.Clientset) {
-	d, err := client.AppsV1().Deployments(ns).Get(context.Background(), deployment, metav1.GetOptions{})
+func (c *Client) UpdateReplicas(deploymentName, namespace string, replicaNum int32) {
+	d, err := c.client.AppsV1().Deployments(namespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
 
 	if err != nil {
-		log.Printf("Error parsing value to int: %v\n", err)
 		os.Exit(1)
 	}
 
+	d.Spec.Replicas = &replicaNum
+	ud, err := c.client.AppsV1().Deployments(namespace).Update(context.Background(), d, metav1.UpdateOptions{})
+
 	if err != nil {
-		log.Printf("Failed to Get deployment: %v \n", err)
+		log.Fatalf("Error updating deployment %v", err)
+	}
+
+	log.Printf("Deployment %s updated: replicas = %d \n", ud.Name, *ud.Spec.Replicas)
+}
+
+func (c *Client) GetDeploymentImages(namespace, deployment string) []string {
+	d, err := c.client.AppsV1().Deployments(namespace).Get(context.Background(), deployment, metav1.GetOptions{})
+	if err != nil {
+		log.Printf("Failed to Get deployment: %v\n", err)
 		os.Exit(1)
 	}
 
-	kd := strings.Split(key, ".")
-	cpuQ := resource.MustParse(newVal)
+	images := make([]string, 0)
 
-	for _, cont := range d.Spec.Template.Spec.Containers {
-		if kd[2] == "requests" {
-			r := &cont.Resources
-			r.Requests[corev1.ResourceMemory] = cpuQ
-		} else if kd[2] == "limits" {
-			r := &cont.Resources
-			r.Limits[corev1.ResourceMemory] = cpuQ
-		}
-		
+	for _, v := range d.Spec.Template.Spec.Containers {
+		images = append(images, v.Name)
 	}
-	
-	updated, err := client.AppsV1().Deployments(ns).Update(context.Background(), d, metav1.UpdateOptions{})
-	if err != nil {
-		log.Printf("Error updating deployment: %v\n", err)
-		os.Exit(1)
-	}
-	
 
-	log.Printf("Deployment updated: %s \n", updated.Name)
+	return images
 }
 
 func updateConfigMapFileProperty(key, newVal, namespace, cname string, client kubernetes.Clientset) {
@@ -104,7 +142,7 @@ func updateConfigMapFileProperty(key, newVal, namespace, cname string, client ku
 	for k, v := range cm.Data {
 		if isFileConf(k) {
 			if strings.HasSuffix(k, ".yaml") {
-				
+
 				var yRes interface{}
 				err = yaml.Unmarshal([]byte(v), &yRes)
 				if err != nil {
@@ -161,7 +199,6 @@ func updateConfigMapKeyProperty(key, newVal, namespace, cmname string, client ku
 	}
 }
 
-
 func updateValueNested(data interface{}, key string, value interface{}, p *[]string) {
 	switch d := data.(type) {
 	case map[string]interface{}:
@@ -187,6 +224,15 @@ func isFileConf(conf string) bool {
 
 	for _, ext := range fileExtensions {
 		if strings.HasSuffix(conf, ext) {
+			return true
+		}
+	}
+	return false
+}
+
+func contains(list []string, target string) bool {
+	for _, value := range list {
+		if value == target {
 			return true
 		}
 	}

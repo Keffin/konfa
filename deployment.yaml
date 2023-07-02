@@ -37,19 +37,20 @@ metadata:
     team: development
 spec:
   replicas: 3
-  selector: # deployment selector
-    matchLabels: # deployment selects "app:frontend" pods, monitors and traces these pods
-      app: mydeployment # if one of the pod is killed, K8s looks at the desire state (replica:3), it recreats another pods to protect number of replicas
+  selector:
+    matchLabels:
+      app: mydeployment
   template:
     metadata:
-      labels: # pod labels, if the deployment selector is same with these labels, deployment follows pods that have these labels
-        app: mydeployment # key: value
+      labels:
+        app: mydeployment
     spec:
       containers:
         - name: nginx
-          image: nginx:latest # image download from DockerHub
+          image: nginx:latest
           ports:
-            - containerPort: 80 # open following ports
+            - containerPort: 944
+              name: nginx-web
           resources:
             limits:
               memory: 512Mi
