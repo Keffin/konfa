@@ -101,7 +101,7 @@ func searchNestedValue(data map[string]interface{}, key string) interface{} {
 // Allow something like
 // Key: ports.ContainerPort, newContainerKey: 81
 // Key: resources.Limits.memory, newContainerKey: 100Mi
-func (c *Client) UpdateContainerSpecs(containerName, containerKey, newContainerKey, namespace, deployment string) {
+func (c *Client) UpdateContainerSpecs(containerName, containerKey, containerValue, namespace, deployment string) {
 	containers := c.GetDeploymentImages(namespace, deployment)
 	d, err := c.client.AppsV1().Deployments(namespace).Get(context.Background(), deployment, metav1.GetOptions{})
 	if err != nil {
@@ -113,8 +113,8 @@ func (c *Client) UpdateContainerSpecs(containerName, containerKey, newContainerK
 	if contains(containers, containerName) {
 		for idx, container := range d.Spec.Template.Spec.Containers {
 			if container.Name == containerName {
-				if containerKey == "ports.ContainerPort" {
-					newPortNum, err := strconv.Atoi(newContainerKey)
+				if containerKey == "ports.containerPort" {
+					newPortNum, err := strconv.Atoi(containerValue)
 					if err != nil {
 						log.Fatalf("Error when converting container port num to int: %v", err)
 					}
@@ -124,7 +124,7 @@ func (c *Client) UpdateContainerSpecs(containerName, containerKey, newContainerK
 					hasBeenUpdated = true
 				} else if containerKey == "resources.limits" || containerKey == "resources.requests" {
 					r := &container.Resources
-					newResourceValue := resource.MustParse(newContainerKey)
+					newResourceValue := resource.MustParse(containerValue)
 					switch containerKey {
 					case "resources.limits":
 						r.Limits[corev1.ResourceMemory] = newResourceValue
@@ -144,7 +144,7 @@ func (c *Client) UpdateContainerSpecs(containerName, containerKey, newContainerK
 			log.Fatalf("Error updating deployment: %v", err)
 		}
 
-		log.Printf("Deployment updated: %s", updated.Name)
+		log.Printf("Deployment successfully updated: %s", updated.Name)
 	}
 }
 
@@ -222,7 +222,6 @@ func updateConfigMapFileProperty(key, newVal, namespace, cname string, client ku
 	}
 	//parents = append(parents, key)
 	log.Println("Nested configmap value successfully updated.")
-	log.Println(parents)
 }
 
 // We want the user to supply a key as well, so we know what we are searching for and only update that one.

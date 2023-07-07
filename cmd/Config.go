@@ -18,7 +18,7 @@ Usage:
 	konfa config get <key>
 	konfa config set <key> <value>
 	`,
-	Run: execute,
+	Run: executeConfig,
 }
 
 func init() {
@@ -27,9 +27,9 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "Add name of configmap you wish to change")
 }
 
-func execute(cmd *cobra.Command, args []string) {
+func executeConfig(cmd *cobra.Command, args []string) {
 	if len(args) != 3 && len(args) != 2 {
-		fmt.Println("Command format faulty. Please provider either get <key> or set <key> <value>")
+		fmt.Println("Command format faulty. Please provide either get <key> or set <key> <value>")
 	}
 
 	data, err := ioutil.ReadFile(namespaceFile)
