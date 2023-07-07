@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -44,6 +45,50 @@ func (c *Client) UpdateConfigMap(isFileProp bool, key, val, configName string) {
 
 func (c *Client) GetNamespace() string {
 	return c.namespace
+}
+
+func (c *Client) GetConfigMapValue(cmname, key string) (string, error) {
+	cm, err := c.client.CoreV1().ConfigMaps(c.namespace).Get(context.Background(), cmname, metav1.GetOptions{})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to get ConfigMap: %v", err)
+	}
+
+	if value, ok := cm.Data[key]; ok {
+		return value, nil
+	}
+
+	for k, v := range cm.Data {
+		if isFileConf(k) {
+			// Parse the YAML or properties content
+			data := make(map[string]interface{})
+			if err := yaml.Unmarshal([]byte(v), &data); err != nil {
+				return "", fmt.Errorf("error parsing YAML/properties for key '%s': %v", k, err)
+			}
+
+			// Traverse the nested structure to find the key
+			value := searchNestedValue(data, key)
+			if value != nil {
+				return fmt.Sprintf("%v", value), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("key '%s' not found in ConfigMap '%s'", key, cmname)
+}
+
+func searchNestedValue(data map[string]interface{}, key string) interface{} {
+	for k, v := range data {
+		if k == key {
+			return v
+		}
+		if nested, ok := v.(map[string]interface{}); ok {
+			if result := searchNestedValue(nested, key); result != nil {
+				return result
+			}
+		}
+	}
+	return nil
 }
 
 // Deployments use the AppsV1(), while config etc uses CoreV1()
@@ -188,7 +233,7 @@ func updateConfigMapKeyProperty(key, newVal, namespace, cmname string, client ku
 		log.Printf("Error getting configmap: %v \n", err)
 		os.Exit(1)
 	}
-	for k, _ := range cm.Data {
+	for k := range cm.Data {
 		// Match that the key is also correct
 		if !isFileConf(k) {
 			cm.Data[k] = newVal
